@@ -9,16 +9,16 @@ object RAT{
 }
 
 class CRat_IO(n: Int) extends Bundle{
-    val rj           = Input(Vec(4, UInt(5.W)))
-    val rk           = Input(Vec(4, UInt(5.W)))
+    val rj           = Input(Vec(2, UInt(5.W)))
+    val rk           = Input(Vec(2, UInt(5.W)))
 
-    val rd           = Input(Vec(4, UInt(5.W)))
-    val rd_valid     = Input(Vec(4, Bool()))
-    val alloc_preg   = Input(Vec(4, UInt(log2Ceil(n).W)))
+    val rd           = Input(Vec(2, UInt(5.W)))
+    val rd_valid     = Input(Vec(2, Bool()))
+    val alloc_preg   = Input(Vec(2, UInt(log2Ceil(n).W)))
 
-    val prj          = Output(Vec(4, UInt(log2Ceil(n).W)))
-    val prk          = Output(Vec(4, UInt(log2Ceil(n).W)))
-    val pprd         = Output(Vec(4, UInt(log2Ceil(n).W)))
+    val prj          = Output(Vec(2, UInt(log2Ceil(n).W)))
+    val prk          = Output(Vec(2, UInt(log2Ceil(n).W)))
+    val pprd         = Output(Vec(2, UInt(log2Ceil(n).W)))
 
     val arch_rat     = Input(Vec(n, UInt(1.W)))
     val predict_fail = Input(Bool())
@@ -36,7 +36,7 @@ class CRat(n: Int) extends Module{
             crat(i).valid := io.arch_rat(i)
         }
     }.otherwise{
-        for(i <- 0 until 4){
+        for(i <- 0 until 2){
             crat(io.alloc_preg(i)).lr := io.rd(i)
             when(io.rd_valid(i).asBool){
                 crat(io.alloc_preg(i)).valid    := true.B
@@ -46,7 +46,7 @@ class CRat(n: Int) extends Module{
         }
     }
     // read for rj, rk, rd
-    for(i <- 0 until 4){
+    for(i <- 0 until 2){
         val rj_hit_oh = Wire(Vec(n, Bool()))
         val rk_hit_oh = Wire(Vec(n, Bool()))
         val rd_hit_oh = Wire(Vec(n, Bool()))

@@ -12,11 +12,11 @@ object Fetch{
 }
 
 class Fetch_Queue_IO extends Bundle{
-    val insts_pack          = Input(Vec(4, new inst_pack_PD_t))
+    val insts_pack          = Input(Vec(2, new inst_pack_PD_t))
 
     val next_ready          = Input(Bool())
-    val insts_valid_decode  = Output(Vec(4, Bool()))
-    val insts_pack_id       = Output(Vec(4, new inst_pack_PD_t))
+    val insts_valid_decode  = Output(Vec(2, Bool()))
+    val insts_pack_id       = Output(Vec(2, new inst_pack_PD_t))
     
 
     val full                = Output(Bool())
@@ -28,7 +28,7 @@ class Fetch_Queue extends Module{
 
     /* config */
     val num_entries = 32
-    val fetch_width = 4
+    val fetch_width = 2
     val row_width = num_entries / fetch_width
     val queue = RegInit(VecInit(Seq.fill(fetch_width)(VecInit(Seq.fill(row_width)(0.U.asTypeOf(new inst_pack_PD_t))))))
 
