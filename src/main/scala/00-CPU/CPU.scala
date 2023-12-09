@@ -4,14 +4,14 @@ import Inst_Pack._
 import Control_Signal._
 object CPU_Config{
     val RESET_VEC   = 0x1c000000
-    val PREG_NUM    = 56
+    val PREG_NUM    = 64
     val ROB_NUM     = 32
-    val SB_NUM      = 8
-    val IQ_AR_NUM   = 8
-    val IQ_AP_NUM   = 8
-    val IQ_AB_NUM   = 8
-    val IQ_MD_NUM   = 8
-    val IQ_LS_NUM   = 8
+    val SB_NUM      = 4
+    val IQ_AR_NUM   = 6
+    val IQ_AP_NUM   = 6
+    val IQ_AB_NUM   = 6
+    val IQ_MD_NUM   = 6
+    val IQ_LS_NUM   = 6
 
 }
 import CPU_Config._

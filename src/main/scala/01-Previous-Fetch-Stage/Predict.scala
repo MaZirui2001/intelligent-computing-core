@@ -1,7 +1,7 @@
 import chisel3._
 import chisel3.util._
 object PRED_Config{
-    val BTB_INDEX_WIDTH     = 7
+    val BTB_INDEX_WIDTH     = 8
     val BTB_TAG_WIDTH       = 28 - BTB_INDEX_WIDTH
     val BTB_DEPTH           = 1 << BTB_INDEX_WIDTH
     class btb_t extends Bundle{
@@ -10,9 +10,9 @@ object PRED_Config{
         val tag         = UInt(BTB_TAG_WIDTH.W)
         val typ         = UInt(2.W)
     }
-    val BHT_INDEX_WIDTH = 6
+    val BHT_INDEX_WIDTH = 7
     val BHT_DEPTH       = 1 << BHT_INDEX_WIDTH
-    val PHT_INDEX_WIDTH = 6
+    val PHT_INDEX_WIDTH = 7
     val PHT_DEPTH       = 1 << PHT_INDEX_WIDTH
 
     val RET     = 1.U(2.W)

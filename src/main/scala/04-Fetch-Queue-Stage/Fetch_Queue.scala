@@ -27,7 +27,7 @@ class Fetch_Queue extends Module{
     val io = IO(new Fetch_Queue_IO)
 
     /* config */
-    val num_entries = 32
+    val num_entries = 16
     val fetch_width = 2
     val row_width = num_entries / fetch_width
     val queue = RegInit(VecInit(Seq.fill(fetch_width)(VecInit(Seq.fill(row_width)(0.U.asTypeOf(new inst_pack_PD_t))))))
