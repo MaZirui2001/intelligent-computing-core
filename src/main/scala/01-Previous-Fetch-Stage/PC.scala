@@ -1,5 +1,6 @@
 import chisel3._
 import chisel3.util._
+import CPU_Config._
 
 class PC_IO extends Bundle {
     val pc_PF           = Output(UInt(32.W))
@@ -27,7 +28,7 @@ class PC(reset_val: Int) extends Module {
         io.npc := io.flush_pd_target
     }
     .elsewhen(!io.pc_stall) {
-        when(io.pred_jump.reduce(_||_)){
+        when(io.pred_jump.asUInt.orR){
             io.npc := io.pred_npc
         }.otherwise{
             io.npc := (pc + 8.U)(31, 3) ## 0.U(3.W)
@@ -40,10 +41,9 @@ class PC(reset_val: Int) extends Module {
     io.pc_PF := pc
     pc := io.npc
 
-    io.inst_valid_PF(0) := true.B
-    io.inst_valid_PF(1) := !io.pred_jump(0) && !pc(2) 
-    //val inst_valid_temp = VecInit(PriorityEncoderOH(io.pred_jump))
+    val inst_valid_temp = !io.pred_jump(0) ## true.B
+    val valid_mask = !pc(2) ## true.B
 
-    //io.inst_valid_PF := (((inst_valid_temp.asUInt(2, 0) ## 0.U(1.W)) - 1.U(4.W)) & (15.U(4.W) >> pc(3, 2))).asBools
+    io.inst_valid_PF := (inst_valid_temp & valid_mask).asBools
 
 }

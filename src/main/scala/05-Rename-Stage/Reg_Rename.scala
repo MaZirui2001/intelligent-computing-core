@@ -1,5 +1,6 @@
 import chisel3._
 import chisel3.util._
+import CPU_Config._
 // LUT: 3759 FF: 794
 class Reg_rename_IO(n: Int) extends Bundle{
     val rj                  = Input(Vec(2, UInt(5.W)))
@@ -57,13 +58,14 @@ class Reg_Rename(n: Int) extends Module{
 
 
     // WAW
-    rd_valid_temp(1)       := io.rd_valid(1)
-    rd_valid_temp(0)       := io.rd_valid(0) & ~((io.rd(0) === io.rd(1)) & io.rd_valid(1))
+    rd_valid_temp(1)     := io.rd_valid(1)
+    rd_valid_temp(0)     := io.rd_valid(0) & ~((io.rd(0) === io.rd(1)) & io.rd_valid(1))
 
     io.pprd             := pprd_temp
     when(io.rd_valid(0) & (io.rd(0) === io.rd(1))){
         io.pprd(1)      := alloc_preg(0)
     }
+
     // crat
     crat.io.rj              := io.rj
     crat.io.rk              := io.rk

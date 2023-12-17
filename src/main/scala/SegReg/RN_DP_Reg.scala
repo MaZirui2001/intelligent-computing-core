@@ -1,6 +1,7 @@
 import chisel3._
 import chisel3.util._
 import Inst_Pack._
+import CPU_Config._
 
 // LUT: 38 FF: 520
 
@@ -27,7 +28,3 @@ class RN_DP_Reg extends Module {
 
 
 }
-
-// object RN_DP_Reg extends App {
-//     emitVerilog(new RN_DP_Reg, Array("-td", "build/"))
-// }

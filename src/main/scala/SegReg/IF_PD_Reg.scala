@@ -1,7 +1,8 @@
 import chisel3._
 import chisel3.util._
 import Inst_Pack._
-// LUT: 12 FF: 260
+import CPU_Config._
+// LUT: 1FRONT_WIDTH FF: 260
 class IF_PD_Reg extends Module {
     val io = IO(new Bundle {
         val flush           = Input(Bool())
@@ -22,7 +23,3 @@ class IF_PD_Reg extends Module {
     }
     io.insts_pack_PD := insts_pack_reg
 }
-
-// object IF_FQ_Reg extends App {
-//     emitVerilog(new IF_FQ_Reg, Array("-td", "build/"))
-// }

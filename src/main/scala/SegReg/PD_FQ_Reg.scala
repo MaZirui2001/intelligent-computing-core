@@ -1,6 +1,7 @@
 import chisel3._
 import chisel3.util._
 import Inst_Pack._
+import CPU_Config._
 // LUT: 14 FF: 260
 class PD_FQ_Reg extends Module {
     val io = IO(new Bundle {
@@ -47,7 +48,3 @@ class PD_FQ_Reg extends Module {
     io.pred_fix_is_bl_FQ  := pred_fix_is_bl_reg
     io.pred_fix_pc_plus_4_FQ := pred_fix_pc_plus_4_reg
 }
-
-// object IF_FQ_Reg extends App {
-//     emitVerilog(new IF_FQ_Reg, Array("-td", "build/"))
-// }

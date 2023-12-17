@@ -1,5 +1,6 @@
 import chisel3._
 import chisel3.util._
+import CPU_Config._
 // LUT: 3255 FF: 378
 object RAT{
     class rat_t extends Bundle{

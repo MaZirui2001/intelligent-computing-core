@@ -1,6 +1,7 @@
 import chisel3._
 import chisel3.util._
 import Inst_Pack._
+import CPU_Config._
 
 class PF_IF_Reg extends Module {
     val io = IO(new Bundle{
