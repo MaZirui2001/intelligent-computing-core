@@ -2,15 +2,6 @@ import chisel3._
 import chisel3.util._
 import Inst_Pack._
 import CPU_Config._
-// LUT: 1886 FF: 1042
-
-object Fetch{
-    class fetch_t extends Bundle{
-        val inst = UInt(32.W)
-        val pc = UInt(32.W)
-        val pred_jump = Bool()
-    }
-}
 
 class Fetch_Queue_IO extends Bundle{
     val insts_pack          = Input(Vec(2, new inst_pack_PD_t))
@@ -19,7 +10,6 @@ class Fetch_Queue_IO extends Bundle{
     val insts_valid_decode  = Output(Vec(2, Bool()))
     val insts_pack_id       = Output(Vec(2, new inst_pack_PD_t))
     
-
     val full                = Output(Bool())
     val flush               = Input(Bool())
 }
@@ -29,13 +19,13 @@ class Fetch_Queue extends Module{
 
     /* config */
     val ROW_WIDTH = FQ_NUM / 2
-    val queue = RegInit(VecInit(Seq.fill(2)(VecInit(Seq.fill(ROW_WIDTH)(0.U.asTypeOf(new inst_pack_PD_t))))))
+    val queue = RegInit(VecInit.fill(2)(VecInit.fill(ROW_WIDTH)(0.U.asTypeOf(new inst_pack_PD_t))))
 
-    val head = RegInit(0.U(log2Ceil(ROW_WIDTH).W))
+    val head = RegInit(VecInit.fill(2)(0.U(log2Ceil(ROW_WIDTH).W)))
     val tail = RegInit(0.U(log2Ceil(FQ_NUM).W))
 
-    val full  = head === tail(log2Ceil(FQ_NUM)-1, 1) + 1.U
-    val empty = head === tail(log2Ceil(FQ_NUM)-1, 1)
+    val full  = !(head(0) ^ (tail(log2Ceil(FQ_NUM)-1, 1) + 1.U))
+    val empty = !(head(1) ^ tail(log2Ceil(FQ_NUM)-1, 1))
 
 
     // Enqueue
@@ -51,12 +41,12 @@ class Fetch_Queue extends Module{
     // write to queue
     for(i <- 0 until 2){
         when(!full && io.insts_pack(i).inst_valid){
-            queue(entry_idxs(i)(1-1, 0))(entry_idxs(i)(log2Ceil(FQ_NUM)-1, 1)) := io.insts_pack(i)
+            queue(entry_idxs(i)(0))(entry_idxs(i)(log2Ceil(FQ_NUM)-1, 1)) := io.insts_pack(i)
         }
     }
     // Dequeue
     for(i <- 0 until 2){
-        io.insts_pack_id(i) := queue(i)(head)
+        io.insts_pack_id(i) := queue(i)(head(i))
         io.insts_valid_decode(i) := !empty
     }
     // update ptrs
@@ -64,10 +54,13 @@ class Fetch_Queue extends Module{
         tail := entry_index
     }
     when(io.next_ready && !empty){
-        head := head + 1.U
+        // head := head + 1.U
+        for(i <- 0 until 2){
+            head(i) := head(i) + 1.U
+        }
     }
     when(io.flush){
-        head := 0.U
+        head.foreach(_ := 0.U)
         tail := 0.U
     }
 
