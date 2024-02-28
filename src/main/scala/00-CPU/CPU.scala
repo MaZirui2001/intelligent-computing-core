@@ -6,6 +6,7 @@ import TLB_Struct._
 
 
 import CPU_Config._
+import coursier.util.shaded.org.jsoup.select.CombiningEvaluator.Or
 class CPU_IO extends Bundle{
     val araddr                      = Output(UInt(32.W))
     val arburst                     = Output(UInt(2.W))
@@ -119,8 +120,13 @@ class CPU extends Module {
     val sel4                        = Module(new Order_Select(IQ_LS_NUM, new inst_pack_DP_LS_t))
     val ir_reg4                     = Module(new LS_RF_EX_Reg(new inst_pack_IS_LS_t))
 
+    val iq5                         = Module(new Order_Issue_Queue(IQ_VEC_NUM, new inst_pack_DP_VEC_t))
+    val sel5                        = Module(new Order_Select(IQ_VEC_NUM, new inst_pack_DP_VEC_t))
+    val ir_reg5                     = Module(new IS_RF_Reg(new inst_pack_IS_VEC_t))
+
     /* Regfile Read Stage */
     val rf                          = Module(new Physical_Regfile(PREG_NUM))
+    val vrf                         = Module(new Vector_Regfile)
     val csr_rf                      = Module(new CSR_Regfile(32, 30))
     val stable_cnt                  = Module(new Stable_Counter)
 
@@ -128,6 +134,7 @@ class CPU extends Module {
     val re_reg2                     = Module(new RF_EX_Reg(new inst_pack_IS_FU2_t))
     val re_reg3                     = Module(new RF_EX_Reg(new inst_pack_IS_MD_t))
     val re_reg4                     = Module(new RF_EX_Reg(new inst_pack_IS_LS_t))
+    val re_reg5                     = Module(new VEC_RF_EX_Reg(new inst_pack_IS_VEC_t))
 
     /* Execute Stage */
     val alu1                        = Module(new ALU)
@@ -149,6 +156,9 @@ class CPU extends Module {
     val ls_ex_mem_reg               = Module(new LS_EX_MEM_Reg) 
     val ew_reg4                     = Module(new LS_EX2_WB_Reg)
 
+    val vu                          = Module(new Vector_Unit)
+    val ew_reg5                     = Module(new VEC_EX_WB_Reg)
+
     /* Write Back Stage */
     val rob                         = Module(new ROB(ROB_NUM))
     val bypass                      = Module(new Bypass_3)
@@ -156,7 +166,7 @@ class CPU extends Module {
     /* Commit Stage */          
     val arat                        = Module(new Arch_Rat(PREG_NUM))
 
-    val stall_by_iq                 = iq1.io.full || iq2.io.full || iq3.io.full || iq4.io.full
+    val stall_by_iq                 = iq1.io.full || iq2.io.full || iq3.io.full || iq4.io.full || iq5.io.full
 
     /* ---------- 1. Previous Fetch Stage ---------- */
     // PC
@@ -373,6 +383,28 @@ class CPU extends Module {
     sel4.io.insts_issue             := iq4.io.insts_issue
     sel4.io.issue_req               := iq4.io.issue_req
     sel4.io.stall                   := !(iq4.io.issue_req.asUInt.orR) || ir_reg4.io.stall || ShiftRegister(ir_reg4.io.stall, 1)
+
+
+    // 5. vector unit
+    // issue queue
+    iq5.io.insts_dispatch           := VecInit.tabulate(2)(i => inst_pack_DP_VEC_gen(dp.io.inst_packs(i), rob.io.rob_index_dp(i)))
+    iq5.io.insts_disp_index         := dp.io.insts_disp_index(4)
+    iq5.io.insts_disp_valid         := dp.io.insts_disp_valid(4)
+    iq5.io.prj_ready                := prj_ready
+    iq5.io.prk_ready                := prk_ready
+    iq5.io.issue_ack                := sel5.io.issue_ack
+    iq5.io.flush                    := rob.io.predict_fail_cmt(6)
+    iq5.io.stall                    := stall_by_iq || rob.io.full(5)
+    iq5.io.ld_mem_prd               := ls_ex_mem_reg.io.prd_MEM(3)
+    iq5.io.is_store_cmt_num         := rob.io.is_store_num_cmt
+    iq5.io.rob_index_cmt            := rob.io.rob_index_cmt
+    iq5.io.dcache_miss              := dcache.io.cache_miss_iq
+
+    // select
+    sel5.io.insts_issue             := iq5.io.insts_issue
+    sel5.io.issue_req               := iq5.io.issue_req
+    sel5.io.stall                   := !(iq5.io.issue_req.asUInt.orR) || ir_reg5.io.stall || ShiftRegister(ir_reg5.io.stall, 1)
+
     // mutual wakeup
     val iq_inline_wake_preg         = VecInit(sel1.io.wake_preg, 
                                               sel2.io.wake_preg, 
@@ -388,6 +420,7 @@ class CPU extends Module {
     iq2.io.wake_preg                := VecInit(iq_inline_wake_preg(0), iq_inline_wake_preg(1), iq_mutual_wake_preg(2), iq_mutual_wake_preg(3))
     iq3.io.wake_preg                := VecInit(iq_mutual_wake_preg(0), iq_mutual_wake_preg(1), iq_inline_wake_preg(2), iq_mutual_wake_preg(3))
     iq4.io.wake_preg                := VecInit(iq_mutual_wake_preg(0), iq_mutual_wake_preg(1), iq_mutual_wake_preg(2), iq_inline_wake_preg(3))
+    iq5.io.wake_preg                := DontCare
 
     /* ---------- IS-RF SegReg ---------- */
     ir_reg1.io.flush                := rob.io.predict_fail_cmt(7)
@@ -402,11 +435,15 @@ class CPU extends Module {
     ir_reg3.io.stall                := mdu.io.busy
     ir_reg3.io.inst_pack_IS         := inst_pack_IS_MD_gen(sel3.io.inst_issue.inst, sel3.io.inst_issue_valid)
 
+    ir_reg5.io.flush                := rob.io.predict_fail_cmt(7)
+    ir_reg5.io.stall                := false.B
+    ir_reg5.io.inst_pack_IS         := inst_pack_IS_VEC_gen(sel5.io.inst_issue.inst, sel5.io.inst_issue_valid)
+
 
     /* ---------- 7. Regfile Read Stage ---------- */
     // Regfile
-    rf.io.prj                       := VecInit(ir_reg1.io.inst_pack_RF.prj, ir_reg2.io.inst_pack_RF.prj, ir_reg3.io.inst_pack_RF.prj, ir_reg4.io.inst_pack_RF.prj)
-    rf.io.prk                       := VecInit(ir_reg1.io.inst_pack_RF.prk, ir_reg2.io.inst_pack_RF.prk, ir_reg3.io.inst_pack_RF.prk, ir_reg4.io.inst_pack_RF.prk)
+    rf.io.prj                       := VecInit(ir_reg1.io.inst_pack_RF.prj, ir_reg2.io.inst_pack_RF.prj, ir_reg3.io.inst_pack_RF.prj, ir_reg4.io.inst_pack_RF.prj, ir_reg5.io.inst_pack_RF.prj)
+    rf.io.prk                       := VecInit(ir_reg1.io.inst_pack_RF.prk, ir_reg2.io.inst_pack_RF.prk, ir_reg3.io.inst_pack_RF.prk, ir_reg4.io.inst_pack_RF.prk, ir_reg5.io.inst_pack_RF.prk)
 
     ir_reg4.io.flush                := rob.io.predict_fail_cmt(7)
     ir_reg4.io.stall                := sb.io.full && re_reg4.io.inst_pack_EX.mem_type(4) || dcache.io.cache_miss_MEM(3) || (sb.io.st_cmt_valid && ir_reg4.io.inst_pack_EX.mem_type(4, 3).orR)
@@ -442,6 +479,10 @@ class CPU extends Module {
     csr_rf.io.llbit_clear           := rob.io.llbit_clear_cmt
     csr_rf.io.llbit_set             := rob.io.llbit_set_cmt
 
+    // Vector Regfile
+    vrf.io.raddr1                   := ir_reg5.io.inst_pack_RF.prj
+    vrf.io.raddr2                   := ir_reg5.io.inst_pack_RF.prk
+
     /* ---------- RF-EX SegReg ---------- */
     re_reg1.io.flush                := rob.io.predict_fail_cmt(8)
     re_reg1.io.stall                := false.B
@@ -470,6 +511,15 @@ class CPU extends Module {
     re_reg4.io.src1_RF              := Mux(bypass.io.forward_prj_en(2), bypass.io.forward_prj_data(2), ir_reg4.io.src1_EX) + ir_reg4.io.csr_rdata_EX
     re_reg4.io.src2_RF              := Mux(bypass.io.forward_prk_en(2), bypass.io.forward_prk_data(2), ir_reg4.io.src2_EX)
     re_reg4.io.csr_rdata_RF         := DontCare
+
+    re_reg5.io.flush                := rob.io.predict_fail_cmt(8)
+    re_reg5.io.stall                := vu.io.busy
+    re_reg5.io.inst_pack_RF         := ir_reg5.io.inst_pack_RF
+    re_reg5.io.src1_RF              := vrf.io.rdata1
+    re_reg5.io.src2_RF              := vrf.io.rdata2
+    re_reg5.io.addr_RF              := rf.io.prj_data(4) + ir_reg5.io.inst_pack_RF.imm
+
+
 
     /* ---------- 8. Execute Stage ---------- */
     // 1. arith common fu1
@@ -632,6 +682,22 @@ class CPU extends Module {
                                                         5.U -> 0.U(16.W) ## mem_rdata_raw(15, 0)))
     val ls_wb_data                  = Mux(ls_ex_mem_reg.io.inst_pack_MEM.priv_vec(2), 0.U(31.W) ## ls_ex_mem_reg.io.llbit_MEM, mem_rdata)
 
+    // 5. vector fu
+    // vector unit
+    vu.io.src1                      := re_reg5.io.src1_EX
+    vu.io.src2                      := re_reg5.io.src2_EX
+    vu.io.addr                      := re_reg5.io.addr_EX
+    vu.io.en                        := re_reg5.io.inst_pack_EX.inst_valid
+    vu.io.is_mvmul                  := re_reg5.io.inst_pack_EX.alu_op === ALU_MUL
+    vu.io.mem_type                  := re_reg5.io.inst_pack_EX.mem_type(4, 3)
+    vu.io.vec_len                   := re_reg5.io.inst_pack_EX.imm(4, 0)
+    vu.io.mat_len                   := re_reg5.io.inst_pack_EX.imm(9, 5)
+    vu.io.op                        := re_reg5.io.inst_pack_EX.alu_op
+    vu.io.m_rready                  := arb.io.m_rready
+    vu.io.m_rdata                   := arb.io.m_rdata
+    vu.io.m_rlast                   := arb.io.m_rlast
+    vu.io.m_wready                  := arb.io.m_wready
+    vu.io.m_bvalid                  := arb.io.m_bvalid
     
     /* ---------- EX-WB SegReg ---------- */
     ew_reg1.io.flush                := rob.io.predict_fail_cmt(9)
@@ -665,10 +731,19 @@ class CPU extends Module {
     ew_reg4.io.sb_hit_EX2           := sb.io.ld_hit
     ew_reg4.io.is_ucread_EX2        := ls_ex_mem_reg.io.is_ucread_MEM
 
+    ew_reg5.io.flush                := rob.io.predict_fail_cmt(9) || vu.io.busy
+    ew_reg5.io.stall                := false.B
+    ew_reg5.io.inst_pack_EX         := re_reg5.io.inst_pack_EX
+    ew_reg5.io.vec_res_EX           := vu.io.res
+
     /* ---------- 9. Write Back Stage ---------- */
     rf.io.wdata                     := VecInit(ew_reg1.io.alu_out_WB, ew_reg2.io.alu_out_WB, ew_reg3.io.md_out_WB, ew_reg4.io.mem_rdata_WB)
     rf.io.rf_we                     := VecInit(ew_reg1.io.inst_pack_WB.rd_valid, ew_reg2.io.inst_pack_WB.rd_valid, ew_reg3.io.inst_pack_WB.rd_valid, ew_reg4.io.inst_pack_WB.rd_valid && ! ew_reg4.io.exception_WB(7))
     rf.io.prd                       := VecInit(ew_reg1.io.inst_pack_WB.prd, ew_reg2.io.inst_pack_WB.prd, ew_reg3.io.inst_pack_WB.prd, ew_reg4.io.inst_pack_WB.prd)
+
+    vrf.io.waddr                    := ew_reg5.io.inst_pack_WB.prd
+    vrf.io.wdata                    := ew_reg5.io.vec_res_WB
+    vrf.io.we                       := ew_reg5.io.inst_pack_WB.rd_valid
     
     // rob
     rob.io.inst_valid_wb            := VecInit(ew_reg1.io.inst_pack_WB.inst_valid && !ew_reg1.io.stall, ew_reg2.io.inst_pack_WB.inst_valid && !ew_reg2.io.stall, ew_reg3.io.inst_pack_WB.inst_valid && !ew_reg3.io.stall, ew_reg4.io.inst_pack_WB.inst_valid && !ew_reg4.io.stall)
@@ -715,6 +790,21 @@ class CPU extends Module {
     arb.io.d_wlen                   := dcache.io.d_wlen
     arb.io.d_wstrb                  := dcache.io.d_wstrb
     arb.io.d_bready                 := dcache.io.d_bready
+
+    arb.io.m_araddr                 := vu.io.m_araddr
+    arb.io.m_rvalid                 := vu.io.m_rvalid
+    arb.io.m_rsize                  := vu.io.m_rsize
+    arb.io.m_rburst                 := vu.io.m_rburst
+    arb.io.m_rlen                   := vu.io.m_rlen
+    arb.io.m_awaddr                 := vu.io.m_awaddr
+    arb.io.m_wdata                  := vu.io.m_wdata
+    arb.io.m_wvalid                 := vu.io.m_wvalid
+    arb.io.m_wlast                  := vu.io.m_wlast
+    arb.io.m_wstrb                  := vu.io.m_wstrb
+    arb.io.m_wsize                  := vu.io.m_wsize
+    arb.io.m_wburst                 := vu.io.m_wburst
+    arb.io.m_wlen                   := vu.io.m_wlen
+    arb.io.m_bready                 := vu.io.m_bready
     
     
     io.araddr                       := arb.io.araddr  

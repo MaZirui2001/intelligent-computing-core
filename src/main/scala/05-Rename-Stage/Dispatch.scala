@@ -10,14 +10,14 @@ class Dispatch_IO(n: Int) extends Bundle{
     val elem_num            = Input(Vec(2, UInt((log2Ceil(n)+1).W)))
 
     // output for each issue queue
-    val insts_disp_index    = Output(Vec(4, Vec(2, UInt(1.W))))
-    val insts_disp_valid    = Output(Vec(4, Vec(2, Bool())))
+    val insts_disp_index    = Output(Vec(5, Vec(2, UInt(1.W))))
+    val insts_disp_valid    = Output(Vec(5, Vec(2, Bool())))
 }
 
 class Dispatch extends Module{
     val io = IO(new Dispatch_IO(8))
 
-    val queue_id_hit    = Wire(Vec(2, UInt(4.W)))
+    val queue_id_hit    = Wire(Vec(2, UInt(5.W)))
     val fu_ids          = io.inst_packs.map(_.fu_id)
     var fu1_num         = io.elem_num(0)
     var fu2_num         = io.elem_num(1)
@@ -28,9 +28,9 @@ class Dispatch extends Module{
     
     // alloc insts to issue queue, pressed
     io.insts_disp_index     := DontCare
-    io.insts_disp_valid     := VecInit.fill(4)(VecInit.fill(2)(false.B))
+    io.insts_disp_valid     := VecInit.fill(5)(VecInit.fill(2)(false.B))
     // var alloc_index         = VecInit.fill(4)(0.U(1.W))
-    for(i <- 0 until 4){
+    for(i <- 0 until 5){
         var alloc_index = 0.U(1.W)
         for(j <- 0 until 2){
             io.insts_disp_index(i)(alloc_index) := j.U

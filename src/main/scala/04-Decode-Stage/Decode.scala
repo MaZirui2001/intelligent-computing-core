@@ -73,6 +73,11 @@ object Decode_Map{
         BGE         -> List(Y, Y, N, ALU_ADD,   RS1_REG, RS2_IMM,  BR_BGE,  NO_MEM,   BR,    RD, RD, IMM_16S, NOT_PRIV, NO_EXP),
         BLTU        -> List(Y, Y, N, ALU_ADD,   RS1_REG, RS2_IMM,  BR_BLTU, NO_MEM,   BR,    RD, RD, IMM_16S, NOT_PRIV, NO_EXP),
         BGEU        -> List(Y, Y, N, ALU_ADD,   RS1_REG, RS2_IMM,  BR_BGEU, NO_MEM,   BR,    RD, RD, IMM_16S, NOT_PRIV, NO_EXP),
+        VADD        -> List(Y, Y, Y, ALU_ADD,   RS1_REG, RS2_REG,  NO_BR,   NO_MEM,   VEC,   RK, RD, IMM_00U, NOT_PRIV, NO_EXP),
+        VSUB        -> List(Y, Y, Y, ALU_SUB,   RS1_REG, RS2_REG,  NO_BR,   NO_MEM,   VEC,   RK, RD, IMM_00U, NOT_PRIV, NO_EXP),
+        VLOAD       -> List(Y, N, Y, ALU_ADD,   RS1_REG, RS2_IMM,  NO_BR,   MEM_LDW,  VEC,   RK, RD, IMM_20S, NOT_PRIV, NO_EXP),
+        VSTORE      -> List(Y, Y, N, ALU_ADD,   RS1_REG, RS2_IMM,  NO_BR,   MEM_STW,  VEC,   RD, RD, IMM_20S, NOT_PRIV, NO_EXP),
+        VMMUL       -> List(Y, Y, Y, ALU_MUL,   RS1_REG, RS2_REG,  NO_BR,   NO_MEM,   VEC,   RK, RD, IMM_20S, NOT_PRIV, NO_EXP)
     )
 }
 

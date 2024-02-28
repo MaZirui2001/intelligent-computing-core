@@ -92,6 +92,8 @@ class Order_Issue_Queue[T <: inst_pack_DP_t](n: Int, inst_pack_t: T) extends Mod
     }.otherwise{
         if(inst_pack_t.isInstanceOf[inst_pack_DP_LS_t]){
             store_num := store_num + (io.issue_ack && queue(0).inst.asInstanceOf[inst_pack_DP_LS_t].mem_type(4)) - io.is_store_cmt_num
+        }else if(inst_pack_t.isInstanceOf[inst_pack_DP_VEC_t]){
+            store_num := store_num + (io.issue_ack && queue(0).inst.asInstanceOf[inst_pack_DP_VEC_t].mem_type(4)) - io.is_store_cmt_num
         }else{
             store_num := 0.U
         }
@@ -101,7 +103,9 @@ class Order_Issue_Queue[T <: inst_pack_DP_t](n: Int, inst_pack_t: T) extends Mod
     if(inst_pack_t.isInstanceOf[inst_pack_DP_LS_t]){
         io.issue_req := (tail =/= 0.U && queue(0).prj_waked && queue(0).prk_waked 
                                       && (!(queue(0).inst.asInstanceOf[inst_pack_DP_LS_t].priv_vec(0) && (store_num =/= 0.U || queue(0).inst.asInstanceOf[inst_pack_DP_LS_t].rob_index =/= io.rob_index_cmt))))
-    }else{
+    }else if(inst_pack_t.isInstanceOf[inst_pack_DP_VEC_t]){
+        io.issue_req := (tail =/= 0.U && !(store_num =/= 0.U || queue(0).inst.asInstanceOf[inst_pack_DP_VEC_t].rob_index =/= io.rob_index_cmt))
+    } else{
         io.issue_req := (tail =/= 0.U && queue(0).prj_waked && queue(0).prk_waked 
                                       && (!((queue(0).prj_wake_by_ld && !(queue(0).inst.prj ^ io.ld_mem_prd)
                                           || queue(0).prk_wake_by_ld && !(queue(0).inst.prk ^ io.ld_mem_prd)) && io.dcache_miss)))

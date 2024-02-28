@@ -4,11 +4,11 @@ import chisel3.util._
 
 class Physical_Regfile_IO(n: Int) extends Bundle{
     // 8 read ports
-    val prj       = Input(Vec(4, UInt(log2Ceil(n).W)))
-    val prk       = Input(Vec(4, UInt(log2Ceil(n).W)))
+    val prj       = Input(Vec(5, UInt(log2Ceil(n).W)))
+    val prk       = Input(Vec(5, UInt(log2Ceil(n).W)))
 
-    val prj_data  = Output(Vec(4, UInt(32.W)))
-    val prk_data  = Output(Vec(4, UInt(32.W)))
+    val prj_data  = Output(Vec(5, UInt(32.W)))
+    val prk_data  = Output(Vec(5, UInt(32.W)))
 
     // 4 write ports
     val prd       = Input(Vec(4, UInt(log2Ceil(n).W)))
@@ -29,7 +29,7 @@ class Physical_Regfile(n: Int) extends Module{
     val wdata = io.wdata
     val prd = io.prd
 
-    for(i <- 0 until 4){
+    for(i <- 0 until 5){
         io.prj_data(i) := Write_First_Read(rf_we, wdata, prd, io.prj(i), rf)
         io.prk_data(i) := Write_First_Read(rf_we, wdata, prd, io.prk(i), rf)
     }

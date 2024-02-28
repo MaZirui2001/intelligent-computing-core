@@ -33,6 +33,28 @@ class AXI_Arbiter_IO extends Bundle {
     val d_bvalid        = Output(Bool())
     val d_bready        = Input(Bool())
 
+    // for Matrix Unit
+    val m_araddr        = Input(UInt(32.W))
+    val m_rvalid        = Input(Bool())
+    val m_rready        = Output(Bool())
+    val m_rdata         = Output(UInt(32.W))
+    val m_rlast         = Output(Bool())
+    val m_rsize         = Input(UInt(2.W))
+    val m_rburst        = Input(UInt(2.W))
+    val m_rlen          = Input(UInt(8.W))
+
+    val m_awaddr        = Input(UInt(32.W))
+    val m_wdata         = Input(UInt(32.W))
+    val m_wvalid        = Input(Bool())
+    val m_wready        = Output(Bool())
+    val m_wlast         = Input(Bool())
+    val m_wstrb         = Input(UInt(4.W))
+    val m_wsize         = Input(UInt(2.W))
+    val m_wburst        = Input(UInt(2.W))
+    val m_wlen          = Input(UInt(8.W))
+    val m_bvalid        = Output(Bool())
+    val m_bready        = Input(Bool())
+
 
     // for Main Memory
     val araddr          = Output(UInt(32.W))
@@ -84,6 +106,12 @@ class AXI_Arbiter extends Module{
     io.d_wready := false.B
     io.d_bvalid := false.B
 
+    io.m_rready := false.B
+    io.m_rdata  := io.rdata
+    io.m_rlast  := false.B
+    io.m_wready := false.B
+    io.m_bvalid := false.B
+
     io.araddr   := io.i_araddr
     io.arburst  := io.i_rburst
     io.arid     := 0.U
@@ -108,13 +136,13 @@ class AXI_Arbiter extends Module{
     io.wvalid   := false.B
 
     // read FSM
-    val r_idle :: r_iar :: r_ir :: r_dar :: r_dr :: Nil = Enum(5)
+    val r_idle :: r_iar :: r_ir :: r_dar :: r_dr :: r_mar :: r_mr :: Nil = Enum(7)
 
     val r_state = RegInit(r_idle)
     switch(r_state){
         is(r_idle){
             // idle state
-            r_state := Mux(io.i_rvalid, r_iar, Mux(io.d_rvalid, r_dar, r_idle))
+            r_state := Mux(io.i_rvalid, r_iar, Mux(io.d_rvalid, r_dar, Mux(io.m_rvalid, r_mar, r_idle)))
         }
         is(r_iar){
             // icache ar shake hand state
@@ -150,15 +178,33 @@ class AXI_Arbiter extends Module{
             io.rready   := io.d_rvalid
             r_state     := Mux(io.d_rvalid && io.rlast, r_idle, r_dr)
         }
+        is(r_mar){
+            // matrix ar shake hand state
+            io.arvalid  := true.B
+            io.araddr   := io.m_araddr
+            io.arburst  := io.m_rburst
+            io.arsize   := io.m_rsize
+            io.arlen    := io.m_rlen
+            r_state     := Mux(io.arready, r_mr, r_mar)
+        }
+        is(r_mr){
+            // matrix read data state
+            io.m_rready := io.rvalid
+            io.m_rdata  := io.rdata
+            io.m_rlast  := io.rlast
+            io.rready   := io.m_rvalid
+            r_state     := Mux(io.m_rvalid && io.rlast, r_idle, r_mr)
+        }
+
     }
 
     // write FSM
-    val w_idle :: w_daw :: w_dw :: w_db :: Nil = Enum(4)
+    val w_idle :: w_daw :: w_dw :: w_db :: w_maw :: w_mw :: w_mb :: Nil = Enum(7)
     val w_state = RegInit(w_idle)
     switch(w_state){
         is(w_idle){
             // idle state
-            w_state := Mux(io.d_wvalid, w_daw, w_idle)
+            w_state := Mux(io.d_wvalid, w_daw, Mux(io.m_wvalid, w_maw, w_idle))
         }
         is(w_daw){
             // dcache aw shake hand state
@@ -183,6 +229,30 @@ class AXI_Arbiter extends Module{
             io.bready   := io.d_bready
             io.d_bvalid := io.bvalid
             w_state     := Mux(io.bready && io.bvalid, w_idle, w_db)
+        }
+        is(w_maw){
+            // matrix aw shake hand state
+            io.awvalid  := true.B
+            io.awaddr   := io.m_awaddr
+            io.awburst  := io.m_wburst
+            io.awsize   := io.m_wsize
+            io.awlen    := io.m_wlen
+            w_state     := Mux(io.awready, w_mw, w_maw)
+        }
+        is(w_mw){
+            // matrix write data state
+            io.wvalid   := io.m_wvalid
+            io.m_wready := io.wready
+            io.wdata    := io.m_wdata
+            io.wstrb    := io.m_wstrb
+            io.wlast    := io.m_wlast
+            w_state     := Mux(io.wready && io.wlast && io.wvalid, w_mb, w_mw)
+        }
+        is(w_mb){
+            // matrix write response state
+            io.bready   := io.m_bready
+            io.m_bvalid := io.bvalid
+            w_state     := Mux(io.bready && io.bvalid, w_idle, w_mb)
         }
     }
 }

@@ -12,6 +12,7 @@ object CPU_Config{
     val IQ_AB_NUM       = 6
     val IQ_MD_NUM       = 4
     val IQ_LS_NUM       = 8
+    val IQ_VEC_NUM      = 4
     val TLB_ENTRY_NUM   = 16
 }
 
@@ -158,7 +159,8 @@ object Control_Signal{
     val SYST     = 2.U(3.W)
     val MD       = 2.U(3.W)
     val LS       = 3.U(3.W)
-    val ARITH    = 4.U(3.W)
+    val VEC      = 4.U(3.W)
+    val ARITH    = 5.U(3.W)
 
     // rk_sel
     val RD       = 0.U(2.W)

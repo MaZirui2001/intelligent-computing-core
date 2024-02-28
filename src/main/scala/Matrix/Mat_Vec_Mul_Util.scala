@@ -86,5 +86,58 @@ object Mat_Vec_Mul_Func {
         }
         res8
     }
+    def Wallce_Tree_16(src: Vec[UInt]) : Vec[UInt] = {
+        // level1: input 16, output 11
+        val level1         = VecInit(Seq.tabulate(5){i => CSA(src(3*i), src(3*i+1), src(3*i+2), 32)})
+        val res1           = Wire(Vec(11, UInt(32.W)))
+        for(i <- 0 until 5){
+            res1(2*i)       := level1(i)(31, 0)
+            res1(2*i+1)     := level1(i)(63, 32)
+        }
+        res1(10) := src(15)
+        // level2: input 11, output 8
+        val level2         = VecInit(Seq.tabulate(3){i => CSA(res1(3*i), res1(3*i+1), res1(3*i+2), 32)})
+        val res2           = Wire(Vec(8, UInt(32.W)))
+        for(i <- 0 until 3){
+            res2(2*i)       := level2(i)(31, 0)
+            res2(2*i+1)     := level2(i)(63, 32)
+        }
+        res2(6) := res1(9)
+        res2(7) := res1(10)
+        // level3: input 8, output 6
+        val level3         = VecInit(Seq.tabulate(2){i => CSA(res2(3*i), res2(3*i+1), res2(3*i+2), 32)})
+        val res3           = Wire(Vec(6, UInt(32.W)))
+        for(i <- 0 until 2){
+            res3(2*i)       := level3(i)(31, 0)
+            res3(2*i+1)     := level3(i)(63, 32)
+        }
+        res3(4) := res2(6)
+        res3(5) := res2(7)
+        // level4: input 6, output 4
+        val level4         = VecInit(Seq.tabulate(2){i => CSA(res3(3*i), res3(3*i+1), res3(3*i+2), 32)})
+        val res4           = Wire(Vec(4, UInt(32.W)))
+        for(i <- 0 until 2){
+            res4(2*i)       := level4(i)(31, 0)
+            res4(2*i+1)     := level4(i)(63, 32)
+        }
+        // level5: input 4, output 3
+        val level5         = VecInit(Seq.tabulate(1){i => CSA(res4(3*i), res4(3*i+1), res4(3*i+2), 32)})
+        val res5           = Wire(Vec(3, UInt(32.W)))
+        for(i <- 0 until 1){
+            res5(2*i)       := level5(i)(31, 0)
+            res5(2*i+1)     := level5(i)(63, 32)
+        }
+        res5(2) := res4(3)
+        // level6: input 3, output 2
+        val level6         = VecInit(Seq.tabulate(1){i => CSA(res5(3*i), res5(3*i+1), res5(3*i+2), 32)})
+        val res6           = Wire(Vec(2, UInt(32.W)))
+        for(i <- 0 until 1){
+            res6(2*i)       := level6(i)(31, 0)
+            res6(2*i+1)     := level6(i)(63, 32)
+        }
+        res6
+    }
+        
+
 }
 
