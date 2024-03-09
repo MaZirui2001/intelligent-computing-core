@@ -6,7 +6,6 @@ import TLB_Struct._
 
 
 import CPU_Config._
-import coursier.util.shaded.org.jsoup.select.CombiningEvaluator.Or
 class CPU_IO extends Bundle{
     val araddr                      = Output(UInt(32.W))
     val arburst                     = Output(UInt(2.W))
@@ -157,6 +156,7 @@ class CPU extends Module {
     val ew_reg4                     = Module(new LS_EX2_WB_Reg)
 
     val vu                          = Module(new Vector_Unit)
+    val vu_ex_reg                   = Module(new VEC_RF_EX_Reg(new inst_pack_IS_VEC_t))
     val ew_reg5                     = Module(new VEC_EX_WB_Reg)
 
     /* Write Back Stage */
@@ -480,8 +480,8 @@ class CPU extends Module {
     csr_rf.io.llbit_set             := rob.io.llbit_set_cmt
 
     // Vector Regfile
-    vrf.io.raddr1                   := ir_reg5.io.inst_pack_RF.prj
-    vrf.io.raddr2                   := ir_reg5.io.inst_pack_RF.prk
+    vrf.io.raddr1                   := ir_reg5.io.inst_pack_RF.vrj
+    vrf.io.raddr2                   := ir_reg5.io.inst_pack_RF.vrk
 
     /* ---------- RF-EX SegReg ---------- */
     re_reg1.io.flush                := rob.io.predict_fail_cmt(8)
@@ -517,7 +517,8 @@ class CPU extends Module {
     re_reg5.io.inst_pack_RF         := ir_reg5.io.inst_pack_RF
     re_reg5.io.src1_RF              := vrf.io.rdata1
     re_reg5.io.src2_RF              := vrf.io.rdata2
-    re_reg5.io.addr_RF              := rf.io.prj_data(4) + ir_reg5.io.inst_pack_RF.imm
+    re_reg5.io.addr_RF              := rf.io.prj_data(4) //+ ir_reg5.io.inst_pack_RF.imm
+    re_reg5.io.vlen_RF              := rf.io.prk_data(4)
 
 
 
@@ -688,16 +689,24 @@ class CPU extends Module {
     vu.io.src2                      := re_reg5.io.src2_EX
     vu.io.addr                      := re_reg5.io.addr_EX
     vu.io.en                        := re_reg5.io.inst_pack_EX.inst_valid
-    vu.io.is_mvmul                  := re_reg5.io.inst_pack_EX.alu_op === ALU_MUL
+    vu.io.is_mvmul                  := re_reg5.io.inst_pack_EX.alu_op === ALU_SRA
     vu.io.mem_type                  := re_reg5.io.inst_pack_EX.mem_type(4, 3)
-    vu.io.vec_len                   := re_reg5.io.inst_pack_EX.imm(4, 0)
-    vu.io.mat_len                   := re_reg5.io.inst_pack_EX.imm(9, 5)
+    vu.io.vec_len                   := re_reg5.io.vlen_EX(5, 0)
+    vu.io.mat_len                   := re_reg5.io.inst_pack_EX.imm(4, 0)
     vu.io.op                        := re_reg5.io.inst_pack_EX.alu_op
     vu.io.m_rready                  := arb.io.m_rready
     vu.io.m_rdata                   := arb.io.m_rdata
     vu.io.m_rlast                   := arb.io.m_rlast
     vu.io.m_wready                  := arb.io.m_wready
     vu.io.m_bvalid                  := arb.io.m_bvalid
+
+    vu_ex_reg.io.flush              := rob.io.predict_fail_cmt(6)
+    vu_ex_reg.io.stall              := vu.io.busy
+    vu_ex_reg.io.inst_pack_RF       := re_reg5.io.inst_pack_EX
+    vu_ex_reg.io.vlen_RF            := re_reg5.io.vlen_EX
+    vu_ex_reg.io.addr_RF            := re_reg5.io.addr_EX
+    vu_ex_reg.io.src1_RF            := re_reg5.io.src1_EX
+    vu_ex_reg.io.src2_RF            := re_reg5.io.src2_EX
     
     /* ---------- EX-WB SegReg ---------- */
     ew_reg1.io.flush                := rob.io.predict_fail_cmt(9)
@@ -733,7 +742,7 @@ class CPU extends Module {
 
     ew_reg5.io.flush                := rob.io.predict_fail_cmt(9) || vu.io.busy
     ew_reg5.io.stall                := false.B
-    ew_reg5.io.inst_pack_EX         := re_reg5.io.inst_pack_EX
+    ew_reg5.io.inst_pack_EX         := vu_ex_reg.io.inst_pack_EX
     ew_reg5.io.vec_res_EX           := vu.io.res
 
     /* ---------- 9. Write Back Stage ---------- */
@@ -741,19 +750,19 @@ class CPU extends Module {
     rf.io.rf_we                     := VecInit(ew_reg1.io.inst_pack_WB.rd_valid, ew_reg2.io.inst_pack_WB.rd_valid, ew_reg3.io.inst_pack_WB.rd_valid, ew_reg4.io.inst_pack_WB.rd_valid && ! ew_reg4.io.exception_WB(7))
     rf.io.prd                       := VecInit(ew_reg1.io.inst_pack_WB.prd, ew_reg2.io.inst_pack_WB.prd, ew_reg3.io.inst_pack_WB.prd, ew_reg4.io.inst_pack_WB.prd)
 
-    vrf.io.waddr                    := ew_reg5.io.inst_pack_WB.prd
+    vrf.io.waddr                    := ew_reg5.io.inst_pack_WB.vrd
     vrf.io.wdata                    := ew_reg5.io.vec_res_WB
-    vrf.io.we                       := ew_reg5.io.inst_pack_WB.rd_valid
+    vrf.io.we                       := ew_reg5.io.inst_pack_WB.vrd_valid
     
     // rob
-    rob.io.inst_valid_wb            := VecInit(ew_reg1.io.inst_pack_WB.inst_valid && !ew_reg1.io.stall, ew_reg2.io.inst_pack_WB.inst_valid && !ew_reg2.io.stall, ew_reg3.io.inst_pack_WB.inst_valid && !ew_reg3.io.stall, ew_reg4.io.inst_pack_WB.inst_valid && !ew_reg4.io.stall)
-    rob.io.rob_index_wb             := VecInit(ew_reg1.io.inst_pack_WB.rob_index, ew_reg2.io.inst_pack_WB.rob_index, ew_reg3.io.inst_pack_WB.rob_index, ew_reg4.io.inst_pack_WB.rob_index)
-    rob.io.predict_fail_wb          := VecInit(DontCare, ew_reg2.io.predict_fail_WB, DontCare, DontCare)
-    rob.io.real_jump_wb             := VecInit(DontCare, ew_reg2.io.real_jump_WB, DontCare, DontCare)
-    rob.io.branch_target_wb         := VecInit(DontCare, ew_reg2.io.branch_target_WB, ew_reg3.io.csr_wdata_WB, ew_reg4.io.vaddr_WB)
-    rob.io.rf_wdata_wb              := VecInit(ew_reg1.io.alu_out_WB, ew_reg2.io.alu_out_WB, ew_reg3.io.md_out_WB, ew_reg4.io.mem_rdata_WB)
-    rob.io.is_ucread_wb             := VecInit(ew_reg1.io.is_ucread_WB, false.B, false.B, ew_reg4.io.is_ucread_WB)
-    rob.io.exception_wb             := VecInit(DontCare, DontCare, DontCare, ew_reg4.io.exception_WB)
+    rob.io.inst_valid_wb            := VecInit(ew_reg1.io.inst_pack_WB.inst_valid && !ew_reg1.io.stall, ew_reg2.io.inst_pack_WB.inst_valid && !ew_reg2.io.stall, ew_reg3.io.inst_pack_WB.inst_valid && !ew_reg3.io.stall, ew_reg4.io.inst_pack_WB.inst_valid && !ew_reg4.io.stall, ew_reg5.io.inst_pack_WB.inst_valid && !ew_reg5.io.stall)
+    rob.io.rob_index_wb             := VecInit(ew_reg1.io.inst_pack_WB.rob_index, ew_reg2.io.inst_pack_WB.rob_index, ew_reg3.io.inst_pack_WB.rob_index, ew_reg4.io.inst_pack_WB.rob_index, ew_reg5.io.inst_pack_WB.rob_index)
+    rob.io.predict_fail_wb          := VecInit(DontCare, ew_reg2.io.predict_fail_WB, DontCare, DontCare, DontCare)
+    rob.io.real_jump_wb             := VecInit(DontCare, ew_reg2.io.real_jump_WB, DontCare, DontCare, DontCare)
+    rob.io.branch_target_wb         := VecInit(DontCare, ew_reg2.io.branch_target_WB, ew_reg3.io.csr_wdata_WB, ew_reg4.io.vaddr_WB, DontCare)
+    rob.io.rf_wdata_wb              := VecInit(ew_reg1.io.alu_out_WB, ew_reg2.io.alu_out_WB, ew_reg3.io.md_out_WB, ew_reg4.io.mem_rdata_WB, DontCare)
+    rob.io.is_ucread_wb             := VecInit(ew_reg1.io.is_ucread_WB, false.B, false.B, ew_reg4.io.is_ucread_WB, false.B)
+    rob.io.exception_wb             := VecInit(DontCare, DontCare, DontCare, ew_reg4.io.exception_WB, DontCare)
     rob.io.tlbreentry_global        := csr_rf.io.tlbreentry_global
     rob.io.eentry_global            := csr_rf.io.eentry_global
     rob.io.interrupt_vec            := csr_rf.io.interrupt_vec

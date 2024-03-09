@@ -212,17 +212,26 @@ object Inst_Pack{
     class inst_pack_DP_VEC_t extends inst_pack_DP_t{
         val alu_op          = UInt(4.W)
         val mem_type        = UInt(5.W)
+        val vrd             = UInt(3.W)
+        val vrd_valid       = Bool()
+        val vrj             = UInt(3.W)
+        val vrk             = UInt(3.W)
     }
     def inst_pack_DP_VEC_gen (inst_pack_RN : inst_pack_RN_t, _rob_index: UInt) : inst_pack_DP_VEC_t = {
         val inst_pack_DP_VEC = Wire(new inst_pack_DP_VEC_t)
-        inst_pack_DP_VEC.prj            := inst_pack_RN.prj
+        inst_pack_DP_VEC.prj            := Mux(inst_pack_RN.alu_op === Control_Signal.ALU_SRA, inst_pack_RN.imm(4, 0), inst_pack_RN.prj)
         inst_pack_DP_VEC.prk            := inst_pack_RN.prk
         inst_pack_DP_VEC.rd_valid       := inst_pack_RN.rd_valid
         inst_pack_DP_VEC.prd            := inst_pack_RN.prd
-        inst_pack_DP_VEC.imm            := inst_pack_RN.imm
+        inst_pack_DP_VEC.imm            := Mux(inst_pack_RN.alu_op === Control_Signal.ALU_SRA, inst_pack_RN.imm(31, 5), inst_pack_RN.imm)
         inst_pack_DP_VEC.rob_index      := _rob_index
         inst_pack_DP_VEC.alu_op         := inst_pack_RN.alu_op
         inst_pack_DP_VEC.mem_type       := inst_pack_RN.mem_type
+        inst_pack_DP_VEC.vrd            := inst_pack_RN.rd(2, 0)
+        inst_pack_DP_VEC.vrd_valid      := inst_pack_RN.rd_valid
+        inst_pack_DP_VEC.vrj            := inst_pack_RN.rj(2, 0)
+        inst_pack_DP_VEC.vrk            := inst_pack_RN.rk(2, 0)
+
         inst_pack_DP_VEC
     }
     class inst_pack_IS_t extends Bundle{
@@ -319,6 +328,10 @@ object Inst_Pack{
         inst_pack_IS_VEC.rob_index      := inst_pack_DP.rob_index
         inst_pack_IS_VEC.alu_op         := inst_pack_DP.alu_op
         inst_pack_IS_VEC.mem_type       := inst_pack_DP.mem_type
+        inst_pack_IS_VEC.vrd            := inst_pack_DP.vrd
+        inst_pack_IS_VEC.vrd_valid      := inst_pack_DP.vrd_valid
+        inst_pack_IS_VEC.vrj            := inst_pack_DP.vrj
+        inst_pack_IS_VEC.vrk            := inst_pack_DP.vrk
         inst_pack_IS_VEC.inst_valid     := _inst_valid
         inst_pack_IS_VEC
     }

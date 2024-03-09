@@ -4,7 +4,7 @@ import chisel3.util._
 class Vector_Memory_IO extends Bundle {
     val mem_type    = Input(UInt(2.W))
     val addr        = Input(UInt(32.W))
-    val len         = Input(UInt(8.W))
+    val len         = Input(UInt(5.W))
     val data        = Input(Vec(32, UInt(32.W)))
     val res         = Output(UInt(32.W))
     val res_all     = Output(Vec(32, UInt(32.W)))
@@ -41,7 +41,7 @@ class Vector_Memory extends Module {
 
     val mem_type        = ShiftRegister(io.mem_type, 1, !busy)
     val addr            = ShiftRegister(io.addr, 1, !busy)
-    val len             = ShiftRegister(io.len + 1.U, 1, !busy)
+    val len             = ShiftRegister(io.len-1.U, 1, !busy)
     val data            = RegInit(VecInit.fill(32)(0.U(32.W)))
     val res_all         = RegInit(VecInit.fill(32)(0.U(32.W)))
 
@@ -66,38 +66,56 @@ class Vector_Memory extends Module {
         data := (data.asUInt >> 32.U).asTypeOf(Vec(32, UInt(32.W)))
     }
 
+    val rcnt = RegInit(0.U(5.W))
+    when(io.mem_type.orR){
+        rcnt := 0.U
+        res_all := VecInit(Seq.fill(32)(0.U(32.W)))
+    }
+    .elsewhen(io.m_rvalid && io.m_rready){
+        res_all(rcnt) := io.m_rdata
+        rcnt := rcnt + 1.U
+    }
+
     when(io.m_rvalid && io.m_rready){
-        res_all := (res_all.asUInt >> 32.U).asTypeOf(Vec(32, UInt(32.W)))
+        // res_all :=  ## (res_all.asUInt()).asTypeOf(Vec(32, UInt(32.W)))
+
     }
     
-    val s_idle :: s_read :: s_write :: Nil = Enum(3)
+    val s_idle :: s_read :: s_write :: s_finish::Nil = Enum(4)
     val state = RegInit(s_idle)
 
     switch(state){
         is(s_idle){
-            when(io.mem_type(0)){
+            when(mem_type(0)){
                 // read
                 state       := s_read
-            }.elsewhen(io.mem_type(1)){
+            }.elsewhen(mem_type(1)){
                 // write
                 state           := s_write
                 wrt_cnt_reset   := true.B
             }
-            busy           := io.mem_type.orR
+            // busy           := io.mem_type.orR
+            busy := mem_type.orR
         }
         is(s_read){
+            // busy           := !(io.m_rlast && io.m_rready)
             busy           := true.B
-            state          := Mux(io.m_rlast && io.m_rvalid && io.m_rready, s_idle, s_read)
-            m_rvalid    := true.B
-            data_valid  := io.m_rvalid && io.m_rready
+            state          := Mux(io.m_rlast && io.m_rready, s_finish, s_read)
+            m_rvalid        := true.B
+            data_valid     := io.m_rvalid && io.m_rready
         }
         is(s_write){
+            // busy           := !(io.m_bvalid && io.m_bready)
             busy           := true.B
-            state          := Mux(io.m_bvalid && io.m_bready, s_idle, s_write)
+            state          := Mux(io.m_bvalid && io.m_bready, s_finish, s_write)
             m_wvalid    := !wrt_cnt.andR
             m_bready    := true.B
             m_wvalid    := true.B
             m_wlast     := wrt_cnt === 0.U
+        }
+        is(s_finish){
+            busy           := false.B
+            state          := s_idle
         }
     }
 

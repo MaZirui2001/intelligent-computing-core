@@ -8,8 +8,8 @@ class Vector_Unit_IO extends Bundle {
     val en          = Input(Bool())
     val is_mvmul    = Input(Bool())
     val mem_type    = Input(UInt(2.W))
-    val vec_len     = Input(UInt(8.W))
-    val mat_len     = Input(UInt(8.W))
+    val vec_len     = Input(UInt(5.W))
+    val mat_len     = Input(UInt(5.W))
     val op          = Input(UInt(4.W))
     val busy        = Output(Bool())
     val res         = Output(Vec(32, UInt(32.W)))
@@ -74,7 +74,7 @@ class Vector_Unit extends Module {
     mv.io.rdata         := vm.io.res
 
     // busy
-    io.busy := va.io.busy || vm.io.busy || mv.io.busy
+    io.busy := va.io.busy || vm.io.busy  || mv.io.busy
 
     // result
     io.res := Mux1H(Seq(

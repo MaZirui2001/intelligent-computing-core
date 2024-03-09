@@ -23,7 +23,7 @@ class Dispatch extends Module{
     var fu2_num         = io.elem_num(1)
     val min             = Mux(fu1_num <= fu2_num, 0.U, 1.U)
     for(i <- 0 until 2){
-        queue_id_hit(i)     := (UIntToOH(Mux(io.inst_packs(i).fu_id === ARITH, min, io.inst_packs(i).fu_id))) & Fill(4, io.inst_packs(i).inst_valid)
+        queue_id_hit(i)     := (UIntToOH(Mux(io.inst_packs(i).fu_id === ARITH, min, io.inst_packs(i).fu_id))) & Fill(5, io.inst_packs(i).inst_valid)
     }
     
     // alloc insts to issue queue, pressed

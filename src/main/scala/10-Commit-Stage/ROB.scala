@@ -23,14 +23,14 @@ class ROB_IO(n: Int) extends Bundle{
     val stall                   = Input(Bool())
 
     // for wb stage 
-    val inst_valid_wb           = Input(Vec(4, Bool()))
-    val rob_index_wb            = Input(Vec(4, UInt(log2Ceil(n).W)))
-    val exception_wb            = Input(Vec(4, UInt(8.W)))
-    val is_ucread_wb            = Input(Vec(4, Bool()))
-    val predict_fail_wb         = Input(Vec(4, Bool()))
-    val real_jump_wb            = Input(Vec(4, Bool()))
-    val branch_target_wb        = Input(Vec(4, UInt(32.W)))
-    val rf_wdata_wb             = Input(Vec(4, UInt(32.W)))
+    val inst_valid_wb           = Input(Vec(5, Bool()))
+    val rob_index_wb            = Input(Vec(5, UInt(log2Ceil(n).W)))
+    val exception_wb            = Input(Vec(5, UInt(8.W)))
+    val is_ucread_wb            = Input(Vec(5, Bool()))
+    val predict_fail_wb         = Input(Vec(5, Bool()))
+    val real_jump_wb            = Input(Vec(5, Bool()))
+    val branch_target_wb        = Input(Vec(5, UInt(32.W)))
+    val rf_wdata_wb             = Input(Vec(5, UInt(32.W)))
 
     // for cpu state: arch rat
     val cmt_en                  = Output(Vec(2, Bool()))
@@ -187,7 +187,7 @@ class ROB(n: Int) extends Module{
     }
 
     // wb stage
-    for(i <- 0 until 4){
+    for(i <- 0 until 5){
         when(io.inst_valid_wb(i)){
             val col_idx = io.rob_index_wb(i)(FRONT_LOG2-1, 0)
             val row_idx = io.rob_index_wb(i)(log2Ceil(n)-1, FRONT_LOG2)

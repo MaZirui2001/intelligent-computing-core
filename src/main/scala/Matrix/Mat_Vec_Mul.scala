@@ -24,14 +24,15 @@ class Mat_Vec_Mul extends Module {
     val busy            = WireDefault(false.B)
 
     // request buffer
-    val vec_len         = ShiftRegister(io.vec_len, 1, !busy)
-    val mat_len         = ShiftRegister(io.mat_len, 1, 0.U, !busy)
-    val mat_addr        = ShiftRegister(io.mat_addr, 1, !busy)
+    val vec_len         = ShiftRegister(io.vec_len, 1, !busy && io.en)
+    val mat_len         = ShiftRegister(io.mat_len, 1, 0.U, !busy && io.en)
+    val mat_addr        = ShiftRegister(io.mat_addr, 1, !busy && io.en)
     val vec_data        = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
+    val en              = ShiftRegister(io.en, 1, !busy)
     
 
     val config_set      = io.en
-    val cal_valid       = io.data_valid
+    val cal_valid       = io.data_valid && en
 
     // vector buffer
     val vec_raddr       = RegInit(0.U(5.W))
