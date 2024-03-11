@@ -25,12 +25,11 @@ class Mat_Vec_Mul extends Module {
 
     // request buffer
     val vec_len         = ShiftRegister(io.vec_len, 1, !busy && io.en)
-    val mat_len         = ShiftRegister(io.mat_len, 1, 0.U, !busy && io.en)
+    val mat_len         = ShiftRegister(io.mat_len+1.U, 1, 0.U, !busy && io.en)
     val mat_addr        = ShiftRegister(io.mat_addr, 1, !busy && io.en)
-    val vec_data        = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
+    // val vec_data        = RegInit(VecInit(Seq.fill(32)(0.U(32.W))))
     val en              = ShiftRegister(io.en, 1, !busy)
     
-
     val config_set      = io.en
     val cal_valid       = io.data_valid && en
 
@@ -66,10 +65,10 @@ class Mat_Vec_Mul extends Module {
     val vector_elem_1 = vec_buf(vec_raddr)
 
     /* matrix buffer */
-    when(io.data_valid){
-        mat_buf     := io.rdata
-    }
-    val matrix_elem_1 = mat_buf
+    // when(io.data_valid){
+    //     mat_buf     := io.rdata
+    // }
+    val matrix_elem_1 = io.rdata
 
     // stage 1-2 segreg
     val vector_elem_2 = ShiftRegister(vector_elem_1, 1)
@@ -99,7 +98,7 @@ class Mat_Vec_Mul extends Module {
         sb_waddr     := 0.U
     }.elsewhen(cal_valid_4){
         res_add_time := Mux(res_add_time === vec_len, 0.U, res_add_time + 1.U)
-        sb_waddr     := sb_waddr + 1.U
+        // sb_waddr     := sb_waddr + 1.U
     }
     result_sync := (res_add_time === vec_len) && cal_valid_4
     val result_elem = CSA(res_buf, res_4(0), res_4(1), 32)
@@ -115,9 +114,10 @@ class Mat_Vec_Mul extends Module {
     /* store buffer */
     when(result_sync){
         store_buf(sb_waddr) := result_temp
+        sb_waddr := sb_waddr + 1.U
     }
 
-    busy    := sb_waddr =/= mat_len
+    busy    := (sb_waddr =/= mat_len) && en
     io.busy := busy
     io.res  := store_buf
 

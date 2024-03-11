@@ -219,17 +219,17 @@ object Inst_Pack{
     }
     def inst_pack_DP_VEC_gen (inst_pack_RN : inst_pack_RN_t, _rob_index: UInt) : inst_pack_DP_VEC_t = {
         val inst_pack_DP_VEC = Wire(new inst_pack_DP_VEC_t)
-        inst_pack_DP_VEC.prj            := Mux(inst_pack_RN.alu_op === Control_Signal.ALU_SRA, inst_pack_RN.imm(4, 0), inst_pack_RN.prj)
+        inst_pack_DP_VEC.prj            := inst_pack_RN.prj
         inst_pack_DP_VEC.prk            := inst_pack_RN.prk
         inst_pack_DP_VEC.rd_valid       := inst_pack_RN.rd_valid
         inst_pack_DP_VEC.prd            := inst_pack_RN.prd
-        inst_pack_DP_VEC.imm            := Mux(inst_pack_RN.alu_op === Control_Signal.ALU_SRA, inst_pack_RN.imm(31, 5), inst_pack_RN.imm)
+        inst_pack_DP_VEC.imm            := Mux(inst_pack_RN.alu_op === Control_Signal.ALU_SRA, inst_pack_RN.imm(31, 27), inst_pack_RN.imm)
         inst_pack_DP_VEC.rob_index      := _rob_index
         inst_pack_DP_VEC.alu_op         := inst_pack_RN.alu_op
         inst_pack_DP_VEC.mem_type       := inst_pack_RN.mem_type
         inst_pack_DP_VEC.vrd            := inst_pack_RN.rd(2, 0)
         inst_pack_DP_VEC.vrd_valid      := inst_pack_RN.rd_valid
-        inst_pack_DP_VEC.vrj            := inst_pack_RN.rj(2, 0)
+        inst_pack_DP_VEC.vrj            := Mux(inst_pack_RN.alu_op === Control_Signal.ALU_SRA, inst_pack_RN.imm(26, 22), inst_pack_RN.rj(2, 0))
         inst_pack_DP_VEC.vrk            := inst_pack_RN.rk(2, 0)
 
         inst_pack_DP_VEC

@@ -69,7 +69,7 @@ class Vector_Unit extends Module {
     mv.io.vec_len       := io.vec_len
     mv.io.mat_len       := io.mat_len
     mv.io.mat_addr      := io.addr
-    mv.io.vec_data      := io.src2
+    mv.io.vec_data      := io.src1
     mv.io.data_valid    := vm.io.data_valid
     mv.io.rdata         := vm.io.res
 

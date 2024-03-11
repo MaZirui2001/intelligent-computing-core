@@ -41,7 +41,7 @@ class Vector_Memory extends Module {
 
     val mem_type        = ShiftRegister(io.mem_type, 1, !busy)
     val addr            = ShiftRegister(io.addr, 1, !busy)
-    val len             = ShiftRegister(io.len-1.U, 1, !busy)
+    val len             = ShiftRegister(io.len, 1, !busy)
     val data            = RegInit(VecInit.fill(32)(0.U(32.W)))
     val res_all         = RegInit(VecInit.fill(32)(0.U(32.W)))
 
@@ -55,7 +55,7 @@ class Vector_Memory extends Module {
     val wrt_cnt_reset   = WireDefault(false.B)
 
     when(wrt_cnt_reset){
-        wrt_cnt := io.len + 1.U
+        wrt_cnt := io.len
     }.elsewhen(io.m_wvalid && io.m_wready){
         wrt_cnt := wrt_cnt - 1.U
     }
@@ -76,11 +76,6 @@ class Vector_Memory extends Module {
         rcnt := rcnt + 1.U
     }
 
-    when(io.m_rvalid && io.m_rready){
-        // res_all :=  ## (res_all.asUInt()).asTypeOf(Vec(32, UInt(32.W)))
-
-    }
-    
     val s_idle :: s_read :: s_write :: s_finish::Nil = Enum(4)
     val state = RegInit(s_idle)
 
